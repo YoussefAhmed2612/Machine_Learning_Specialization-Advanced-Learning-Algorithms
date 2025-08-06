@@ -1,0 +1,772 @@
+{
+ "cells": [
+  {
+   "cell_type": "code",
+   "execution_count": 1,
+   "id": "5844cb12",
+   "metadata": {
+    "_cell_guid": "b1076dfc-b9ad-4769-8c92-a6c4dae69d19",
+    "_uuid": "8f2839f25d086af736a60e9eeb907d3b93b6e0e5",
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:05.266126Z",
+     "iopub.status.busy": "2025-08-06T07:26:05.265824Z",
+     "iopub.status.idle": "2025-08-06T07:26:24.769894Z",
+     "shell.execute_reply": "2025-08-06T07:26:24.768946Z"
+    },
+    "papermill": {
+     "duration": 19.511563,
+     "end_time": "2025-08-06T07:26:24.771615",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:05.260052",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "2025-08-06 07:26:08.912998: E external/local_xla/xla/stream_executor/cuda/cuda_fft.cc:477] Unable to register cuFFT factory: Attempting to register factory for plugin cuFFT when one has already been registered\n",
+      "WARNING: All log messages before absl::InitializeLog() is called are written to STDERR\n",
+      "E0000 00:00:1754465169.140085      13 cuda_dnn.cc:8310] Unable to register cuDNN factory: Attempting to register factory for plugin cuDNN when one has already been registered\n",
+      "E0000 00:00:1754465169.209265      13 cuda_blas.cc:1418] Unable to register cuBLAS factory: Attempting to register factory for plugin cuBLAS when one has already been registered\n"
+     ]
+    }
+   ],
+   "source": [
+    "import numpy as np\n",
+    "import pandas as pd \n",
+    "import matplotlib.pyplot as plt\n",
+    "import tensorflow as tf\n",
+    "from tensorflow.keras.models import Sequential\n",
+    "from tensorflow.keras.layers import Dense"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 2,
+   "id": "26782e4f",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:24.781815Z",
+     "iopub.status.busy": "2025-08-06T07:26:24.780853Z",
+     "iopub.status.idle": "2025-08-06T07:26:24.799543Z",
+     "shell.execute_reply": "2025-08-06T07:26:24.798621Z"
+    },
+    "papermill": {
+     "duration": 0.025487,
+     "end_time": "2025-08-06T07:26:24.801343",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.775856",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "df = pd.read_csv(\"/kaggle/input/coffee-roasting/CoffeeRoasting.csv\")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 3,
+   "id": "5f7f5027",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:24.811172Z",
+     "iopub.status.busy": "2025-08-06T07:26:24.810828Z",
+     "iopub.status.idle": "2025-08-06T07:26:24.821180Z",
+     "shell.execute_reply": "2025-08-06T07:26:24.820307Z"
+    },
+    "papermill": {
+     "duration": 0.017079,
+     "end_time": "2025-08-06T07:26:24.822974",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.805895",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "X = np.array(df.iloc[:, :-1])\n",
+    "Y = np.array(df.iloc[:,-1]).reshape(-1,1)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "23d397c1",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003703,
+     "end_time": "2025-08-06T07:26:24.830772",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.827069",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### Normalize Data\n",
+    "Fitting the weights to the data will proceed more quickly if the data is normalized.\n",
+    "The procedure below uses a Keras [normalization layer](https://keras.io/api/layers/preprocessing_layers/numerical/normalization/). It has the following steps:\n",
+    "- create a \"Normalization Layer\". Note, as applied here, this is not a layer in your model.\n",
+    "- 'adapt' the data. This learns the mean and variance of the data set and saves the values internally.\n",
+    "- normalize the data.  \n",
+    "It is important to apply normalization to any future data that utilizes the learned model."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 4,
+   "id": "90efe979",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:24.840003Z",
+     "iopub.status.busy": "2025-08-06T07:26:24.839308Z",
+     "iopub.status.idle": "2025-08-06T07:26:24.929989Z",
+     "shell.execute_reply": "2025-08-06T07:26:24.928999Z"
+    },
+    "papermill": {
+     "duration": 0.096926,
+     "end_time": "2025-08-06T07:26:24.931441",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.834515",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Temperature Max, Min pre normalization: 284.99, 151.32\n",
+      "Duration    Max, Min pre normalization: 15.45, 11.51\n",
+      "Temperature Max, Min post normalization: 1.66, -1.69\n",
+      "Duration    Max, Min post normalization: 1.79, -1.70\n"
+     ]
+    },
+    {
+     "name": "stderr",
+     "output_type": "stream",
+     "text": [
+      "2025-08-06 07:26:24.846749: E external/local_xla/xla/stream_executor/cuda/cuda_driver.cc:152] failed call to cuInit: INTERNAL: CUDA error: Failed call to cuInit: UNKNOWN ERROR (303)\n"
+     ]
+    }
+   ],
+   "source": [
+    "print(f\"Temperature Max, Min pre normalization: {np.max(X[:,0]):0.2f}, {np.min(X[:,0]):0.2f}\")\n",
+    "print(f\"Duration    Max, Min pre normalization: {np.max(X[:,1]):0.2f}, {np.min(X[:,1]):0.2f}\")\n",
+    "norm_l = tf.keras.layers.Normalization(axis=-1)\n",
+    "norm_l.adapt(X)  # learns mean, variance\n",
+    "Xn = norm_l(X)\n",
+    "print(f\"Temperature Max, Min post normalization: {np.max(Xn[:,0]):0.2f}, {np.min(Xn[:,0]):0.2f}\")\n",
+    "print(f\"Duration    Max, Min post normalization: {np.max(Xn[:,1]):0.2f}, {np.min(Xn[:,1]):0.2f}\")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "ed0cf240",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003842,
+     "end_time": "2025-08-06T07:26:24.939172",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.935330",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Tile/copy our data to increase the training set size and reduce the number of training epochs."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 5,
+   "id": "10d28027",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:24.948131Z",
+     "iopub.status.busy": "2025-08-06T07:26:24.947808Z",
+     "iopub.status.idle": "2025-08-06T07:26:24.956801Z",
+     "shell.execute_reply": "2025-08-06T07:26:24.955827Z"
+    },
+    "papermill": {
+     "duration": 0.015142,
+     "end_time": "2025-08-06T07:26:24.958176",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.943034",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "(200000, 2) (200000, 1)\n"
+     ]
+    }
+   ],
+   "source": [
+    "Xt = np.tile(Xn,(1000,1))\n",
+    "Yt= np.tile(Y,(1000,1))   \n",
+    "print(Xt.shape, Yt.shape)   "
+   ]
+  },
+  {
+   "attachments": {
+    "b58366f6-24e5-4588-9e67-5b7bbc6591eb.png": {
+     "image/png": "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"
+    }
+   },
+   "cell_type": "markdown",
+   "id": "f06c2e43",
+   "metadata": {
+    "papermill": {
+     "duration": 0.003774,
+     "end_time": "2025-08-06T07:26:24.966036",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.962262",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "### Model\n",
+    "\n",
+    "![image.png](attachment:b58366f6-24e5-4588-9e67-5b7bbc6591eb.png)\n",
+    "\n",
+    "Let's build the \"Coffee Roasting Network\". There are two layers with sigmoid activations as shown below:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 6,
+   "id": "686dafd5",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:24.975121Z",
+     "iopub.status.busy": "2025-08-06T07:26:24.974813Z",
+     "iopub.status.idle": "2025-08-06T07:26:25.015573Z",
+     "shell.execute_reply": "2025-08-06T07:26:25.014739Z"
+    },
+    "papermill": {
+     "duration": 0.047266,
+     "end_time": "2025-08-06T07:26:25.017241",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:24.969975",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [],
+   "source": [
+    "tf.random.set_seed(1234)  # applied to achieve consistent results\n",
+    "model = Sequential(\n",
+    "    [\n",
+    "        tf.keras.Input(shape=(2,)),\n",
+    "        Dense(3, activation='sigmoid', name = 'layer1'),\n",
+    "        Dense(1, activation='sigmoid', name = 'layer2')\n",
+    "     ]\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "be2f62b5",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004617,
+     "end_time": "2025-08-06T07:26:25.026034",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:25.021417",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "The `model.summary()` provides a description of the network:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 7,
+   "id": "8ab8d39d",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:25.035696Z",
+     "iopub.status.busy": "2025-08-06T07:26:25.034700Z",
+     "iopub.status.idle": "2025-08-06T07:26:25.050495Z",
+     "shell.execute_reply": "2025-08-06T07:26:25.049583Z"
+    },
+    "papermill": {
+     "duration": 0.022094,
+     "end_time": "2025-08-06T07:26:25.051939",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:25.029845",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "data": {
+      "text/html": [
+       "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\">Model: \"sequential\"</span>\n",
+       "</pre>\n"
+      ],
+      "text/plain": [
+       "\u001b[1mModel: \"sequential\"\u001b[0m\n"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/html": [
+       "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\">┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓\n",
+       "┃<span style=\"font-weight: bold\"> Layer (type)                    </span>┃<span style=\"font-weight: bold\"> Output Shape           </span>┃<span style=\"font-weight: bold\">       Param # </span>┃\n",
+       "┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩\n",
+       "│ layer1 (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">Dense</span>)                  │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">3</span>)              │             <span style=\"color: #00af00; text-decoration-color: #00af00\">9</span> │\n",
+       "├─────────────────────────────────┼────────────────────────┼───────────────┤\n",
+       "│ layer2 (<span style=\"color: #0087ff; text-decoration-color: #0087ff\">Dense</span>)                  │ (<span style=\"color: #00d7ff; text-decoration-color: #00d7ff\">None</span>, <span style=\"color: #00af00; text-decoration-color: #00af00\">1</span>)              │             <span style=\"color: #00af00; text-decoration-color: #00af00\">4</span> │\n",
+       "└─────────────────────────────────┴────────────────────────┴───────────────┘\n",
+       "</pre>\n"
+      ],
+      "text/plain": [
+       "┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━━━┓\n",
+       "┃\u001b[1m \u001b[0m\u001b[1mLayer (type)                   \u001b[0m\u001b[1m \u001b[0m┃\u001b[1m \u001b[0m\u001b[1mOutput Shape          \u001b[0m\u001b[1m \u001b[0m┃\u001b[1m \u001b[0m\u001b[1m      Param #\u001b[0m\u001b[1m \u001b[0m┃\n",
+       "┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━━━┩\n",
+       "│ layer1 (\u001b[38;5;33mDense\u001b[0m)                  │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m3\u001b[0m)              │             \u001b[38;5;34m9\u001b[0m │\n",
+       "├─────────────────────────────────┼────────────────────────┼───────────────┤\n",
+       "│ layer2 (\u001b[38;5;33mDense\u001b[0m)                  │ (\u001b[38;5;45mNone\u001b[0m, \u001b[38;5;34m1\u001b[0m)              │             \u001b[38;5;34m4\u001b[0m │\n",
+       "└─────────────────────────────────┴────────────────────────┴───────────────┘\n"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/html": [
+       "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\"> Total params: </span><span style=\"color: #00af00; text-decoration-color: #00af00\">13</span> (52.00 B)\n",
+       "</pre>\n"
+      ],
+      "text/plain": [
+       "\u001b[1m Total params: \u001b[0m\u001b[38;5;34m13\u001b[0m (52.00 B)\n"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/html": [
+       "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\"> Trainable params: </span><span style=\"color: #00af00; text-decoration-color: #00af00\">13</span> (52.00 B)\n",
+       "</pre>\n"
+      ],
+      "text/plain": [
+       "\u001b[1m Trainable params: \u001b[0m\u001b[38;5;34m13\u001b[0m (52.00 B)\n"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    },
+    {
+     "data": {
+      "text/html": [
+       "<pre style=\"white-space:pre;overflow-x:auto;line-height:normal;font-family:Menlo,'DejaVu Sans Mono',consolas,'Courier New',monospace\"><span style=\"font-weight: bold\"> Non-trainable params: </span><span style=\"color: #00af00; text-decoration-color: #00af00\">0</span> (0.00 B)\n",
+       "</pre>\n"
+      ],
+      "text/plain": [
+       "\u001b[1m Non-trainable params: \u001b[0m\u001b[38;5;34m0\u001b[0m (0.00 B)\n"
+      ]
+     },
+     "metadata": {},
+     "output_type": "display_data"
+    }
+   ],
+   "source": [
+    "model.summary()"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 8,
+   "id": "863b27ad",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:25.062345Z",
+     "iopub.status.busy": "2025-08-06T07:26:25.061958Z",
+     "iopub.status.idle": "2025-08-06T07:26:25.067147Z",
+     "shell.execute_reply": "2025-08-06T07:26:25.066132Z"
+    },
+    "papermill": {
+     "duration": 0.011867,
+     "end_time": "2025-08-06T07:26:25.068524",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:25.056657",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "L1 params =  9 , L2 params =  4\n"
+     ]
+    }
+   ],
+   "source": [
+    "L1_num_params = 2 * 3 + 3   # W1 parameters  + b1 parameters\n",
+    "L2_num_params = 3 * 1 + 1   # W2 parameters  + b2 parameters\n",
+    "print(\"L1 params = \", L1_num_params, \", L2 params = \", L2_num_params  )"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 9,
+   "id": "1bf392bb",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:25.079037Z",
+     "iopub.status.busy": "2025-08-06T07:26:25.078744Z",
+     "iopub.status.idle": "2025-08-06T07:26:25.090882Z",
+     "shell.execute_reply": "2025-08-06T07:26:25.089930Z"
+    },
+    "papermill": {
+     "duration": 0.019076,
+     "end_time": "2025-08-06T07:26:25.092313",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:25.073237",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "W1(2, 3):\n",
+      " [[ 0.29850256  0.10497749  0.03442121]\n",
+      " [-0.63780296  0.21937037 -0.9966063 ]] \n",
+      "b1(3,): [0. 0. 0.]\n",
+      "W2(3, 1):\n",
+      " [[0.46543765]\n",
+      " [0.7249596 ]\n",
+      " [1.0093652 ]] \n",
+      "b2(1,): [0.]\n"
+     ]
+    }
+   ],
+   "source": [
+    "W1, b1 = model.get_layer(\"layer1\").get_weights()\n",
+    "W2, b2 = model.get_layer(\"layer2\").get_weights()\n",
+    "print(f\"W1{W1.shape}:\\n\", W1, f\"\\nb1{b1.shape}:\", b1)\n",
+    "print(f\"W2{W2.shape}:\\n\", W2, f\"\\nb2{b2.shape}:\", b2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "4e9fb5b7",
+   "metadata": {
+    "papermill": {
+     "duration": 0.004633,
+     "end_time": "2025-08-06T07:26:25.101606",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:25.096973",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "- The `model.compile` statement defines a loss function and specifies a compile optimization.\n",
+    "- The `model.fit` statement runs gradient descent and fits the weights to the data."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 10,
+   "id": "4d8c407e",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:26:25.112175Z",
+     "iopub.status.busy": "2025-08-06T07:26:25.111857Z",
+     "iopub.status.idle": "2025-08-06T07:27:56.219544Z",
+     "shell.execute_reply": "2025-08-06T07:27:56.218322Z"
+    },
+    "papermill": {
+     "duration": 91.115303,
+     "end_time": "2025-08-06T07:27:56.221372",
+     "exception": false,
+     "start_time": "2025-08-06T07:26:25.106069",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Epoch 1/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m10s\u001b[0m 1ms/step - loss: 0.3440\n",
+      "Epoch 2/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2019\n",
+      "Epoch 3/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2010\n",
+      "Epoch 4/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2007\n",
+      "Epoch 5/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2006\n",
+      "Epoch 6/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2006\n",
+      "Epoch 7/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2005\n",
+      "Epoch 8/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2005\n",
+      "Epoch 9/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2005\n",
+      "Epoch 10/10\n",
+      "\u001b[1m6250/6250\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m9s\u001b[0m 1ms/step - loss: 0.2005\n"
+     ]
+    },
+    {
+     "data": {
+      "text/plain": [
+       "<keras.src.callbacks.history.History at 0x7b9af17042d0>"
+      ]
+     },
+     "execution_count": 10,
+     "metadata": {},
+     "output_type": "execute_result"
+    }
+   ],
+   "source": [
+    "model.compile(\n",
+    "    loss = tf.keras.losses.BinaryCrossentropy(),\n",
+    "    optimizer = tf.keras.optimizers.Adam(learning_rate=0.01),\n",
+    ")\n",
+    "\n",
+    "model.fit(\n",
+    "    Xt,Yt,            \n",
+    "    epochs=10,\n",
+    ")"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 11,
+   "id": "cd5ff0b4",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:27:56.405928Z",
+     "iopub.status.busy": "2025-08-06T07:27:56.405579Z",
+     "iopub.status.idle": "2025-08-06T07:27:56.413762Z",
+     "shell.execute_reply": "2025-08-06T07:27:56.412796Z"
+    },
+    "papermill": {
+     "duration": 0.102108,
+     "end_time": "2025-08-06T07:27:56.415207",
+     "exception": false,
+     "start_time": "2025-08-06T07:27:56.313099",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "W1:\n",
+      " [[ 9.996612  -4.16279   -4.459191 ]\n",
+      " [ 5.2952266 -1.2709945 -7.157564 ]] \n",
+      "b1: [-0.18054196 -6.4681916   2.0790675 ]\n",
+      "W2:\n",
+      " [[ -5.2014065]\n",
+      " [-13.715103 ]\n",
+      " [  5.46549  ]] \n",
+      "b2: [-2.9500039]\n"
+     ]
+    }
+   ],
+   "source": [
+    "W1, b1 = model.get_layer(\"layer1\").get_weights()\n",
+    "W2, b2 = model.get_layer(\"layer2\").get_weights()\n",
+    "print(\"W1:\\n\", W1, \"\\nb1:\", b1)\n",
+    "print(\"W2:\\n\", W2, \"\\nb2:\", b2)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "384478ac",
+   "metadata": {
+    "papermill": {
+     "duration": 0.102665,
+     "end_time": "2025-08-06T07:27:56.608502",
+     "exception": false,
+     "start_time": "2025-08-06T07:27:56.505837",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "Let's start by creating input data. The model is expecting one or more examples where examples are in the rows of matrix. In this case, we have two features so the matrix will be (m,2) where m is the number of examples.\n",
+    "Recall, we have normalized the input features so we must normalize our test data as well.   \n",
+    "To make a prediction, you apply the `predict` method."
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 12,
+   "id": "63b9cae5",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:27:56.807400Z",
+     "iopub.status.busy": "2025-08-06T07:27:56.806758Z",
+     "iopub.status.idle": "2025-08-06T07:27:56.959515Z",
+     "shell.execute_reply": "2025-08-06T07:27:56.958438Z"
+    },
+    "papermill": {
+     "duration": 0.260041,
+     "end_time": "2025-08-06T07:27:56.961345",
+     "exception": false,
+     "start_time": "2025-08-06T07:27:56.701304",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "\u001b[1m1/1\u001b[0m \u001b[32m━━━━━━━━━━━━━━━━━━━━\u001b[0m\u001b[37m\u001b[0m \u001b[1m0s\u001b[0m 75ms/step\n",
+      "predictions = \n",
+      " [[6.9075489e-01]\n",
+      " [2.8748738e-04]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "X_test = np.array([\n",
+    "    [200,13.9],  # positive example\n",
+    "    [200,17]])   # negative example\n",
+    "X_testn = norm_l(X_test)\n",
+    "predictions = model.predict(X_testn)\n",
+    "print(\"predictions = \\n\", predictions)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "id": "be2832b3",
+   "metadata": {
+    "papermill": {
+     "duration": 0.09161,
+     "end_time": "2025-08-06T07:27:57.175005",
+     "exception": false,
+     "start_time": "2025-08-06T07:27:57.083395",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "source": [
+    "To convert the probabilities to a decision, we apply a threshold:"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 13,
+   "id": "fe8a52ed",
+   "metadata": {
+    "execution": {
+     "iopub.execute_input": "2025-08-06T07:27:57.358329Z",
+     "iopub.status.busy": "2025-08-06T07:27:57.357995Z",
+     "iopub.status.idle": "2025-08-06T07:27:57.363588Z",
+     "shell.execute_reply": "2025-08-06T07:27:57.362585Z"
+    },
+    "papermill": {
+     "duration": 0.098394,
+     "end_time": "2025-08-06T07:27:57.365014",
+     "exception": false,
+     "start_time": "2025-08-06T07:27:57.266620",
+     "status": "completed"
+    },
+    "tags": []
+   },
+   "outputs": [
+    {
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "decisions = \n",
+      "[[1]\n",
+      " [0]]\n"
+     ]
+    }
+   ],
+   "source": [
+    "yhat = (predictions >= 0.5).astype(int)\n",
+    "print(f\"decisions = \\n{yhat}\")"
+   ]
+  }
+ ],
+ "metadata": {
+  "kaggle": {
+   "accelerator": "none",
+   "dataSources": [
+    {
+     "datasetId": 8003947,
+     "sourceId": 12665827,
+     "sourceType": "datasetVersion"
+    }
+   ],
+   "dockerImageVersionId": 31089,
+   "isGpuEnabled": false,
+   "isInternetEnabled": true,
+   "language": "python",
+   "sourceType": "notebook"
+  },
+  "kernelspec": {
+   "display_name": "Python 3",
+   "language": "python",
+   "name": "python3"
+  },
+  "language_info": {
+   "codemirror_mode": {
+    "name": "ipython",
+    "version": 3
+   },
+   "file_extension": ".py",
+   "mimetype": "text/x-python",
+   "name": "python",
+   "nbconvert_exporter": "python",
+   "pygments_lexer": "ipython3",
+   "version": "3.11.13"
+  },
+  "papermill": {
+   "default_parameters": {},
+   "duration": 120.182619,
+   "end_time": "2025-08-06T07:28:00.701630",
+   "environment_variables": {},
+   "exception": null,
+   "input_path": "__notebook__.ipynb",
+   "output_path": "__notebook__.ipynb",
+   "parameters": {},
+   "start_time": "2025-08-06T07:26:00.519011",
+   "version": "2.6.0"
+  }
+ },
+ "nbformat": 4,
+ "nbformat_minor": 5
+}
